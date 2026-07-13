@@ -1,0 +1,5 @@
+print("===========================================")
+print(" Python Code de Radar")
+print(" Version 0.1")
+print(" Proyecto iniciado correctamente")
+print("===========================================")
