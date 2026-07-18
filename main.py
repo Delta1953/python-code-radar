@@ -1,3 +1,20 @@
+"""
+=========================================================
+Proyecto : Python Code de Radar
+Archivo  : main.py
+Autor    : Roberto Günther
+Versión  : 0.3
+=========================================================
+
+OBJETIVO
+--------
+Punto de entrada de la aplicación.
+
+Coordina los distintos módulos del proyecto y ejecuta
+el Radar de Trading.
+
+=========================================================
+"""
 from exchange.binance_client import BinanceClient
 
 def main():
