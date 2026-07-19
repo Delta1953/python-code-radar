@@ -32,6 +32,7 @@ from config.settings import DEFAULT_CANDLE_LIMIT, DEFAULT_TIMEFRAME
 from indicators.ema import EMAIndicator
 from indicators.ohlcv_service import OHLCVService
 from indicators.rsi import RSIIndicator
+from indicators.macd import MACDIndicator
 
 
 class TechnicalAnalyzer:
@@ -109,6 +110,10 @@ class TechnicalAnalyzer:
             period=14,
         )
 
+        macd = MACDIndicator.get_last(
+            closing_prices,
+        )
+
         trend = self._determine_trend(
             ema_9,
             ema_21,
@@ -133,6 +138,9 @@ class TechnicalAnalyzer:
             "ema_9": ema_9,
             "ema_21": ema_21,
             "rsi_14": rsi_14,
+            "macd": macd["macd"],
+            "signal": macd["signal"],
+            "histogram": macd["histogram"],
             "trend": trend,
             "rsi_status": rsi_status,
             "score": score,

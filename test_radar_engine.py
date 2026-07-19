@@ -58,16 +58,31 @@ def main():
     )
 
     print("\nRADAR DE MERCADOS")
-    print("-" * 75)
+    print(
+        f"{'N°':<4}"
+        f"{'SÍMBOLO':<14}"
+        f"{'SCORE':>8}    "
+        f"{'TENDENCIA':<12}"
+        f"{'RSI':>8}    "
+        f"{'PRECIO':>12}    "
+        f"{'MACD':>10}    "
+        f"{'SIG':>10}    "
+        f"{'HIST':>10}"
+    )
+
+    print("-" * 125)
 
     for position, result in enumerate(results, start=1):
         print(
             f"{position:02d}. "
-            f"{result['symbol']:<14} "
-            f"Score: {result['score']:<5} "
-            f"Tendencia: {result['trend']:<10} "
-            f"RSI: {result['rsi_14']:.2f}   "
-            f"Precio: {result['current_price']:.2f}"
+            f"{result['symbol']:<14}"
+            f"{result['score']:>8}    "
+            f"{result['trend']:<12}"
+            f"{result['rsi_14']:>8.2f}    "
+            f"{result['current_price']:>12.4f}    "
+            f"{result['macd']:>10.4f}    "
+            f"{result['signal']:>10.4f}    "
+            f"{result['histogram']:>10.4f}"
         )
 
     scores = [result["score"] for result in results]
