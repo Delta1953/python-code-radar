@@ -114,6 +114,11 @@ class TechnicalAnalyzer:
             closing_prices,
         )
 
+        macd_status = self._interpret_macd(
+            macd_value=macd["macd"],
+            signal_value=macd["signal"],
+        )
+
         trend = self._determine_trend(
             ema_9,
             ema_21,
@@ -128,8 +133,12 @@ class TechnicalAnalyzer:
             ema_9=ema_9,
             ema_21=ema_21,
             rsi_14=rsi_14,
+            macd_value=macd["macd"],
+            signal_value=macd["signal"],
         )
 
+        recommendation = self._determine_recommendation(score)
+        
         return {
             "symbol": symbol,
             "timeframe": timeframe,
@@ -141,10 +150,13 @@ class TechnicalAnalyzer:
             "macd": macd["macd"],
             "signal": macd["signal"],
             "histogram": macd["histogram"],
+            "macd_status": macd_status,
             "trend": trend,
             "rsi_status": rsi_status,
             "score": score,
+            "recommendation": recommendation,
         }
+                
 
     @staticmethod
     def _determine_trend(ema_9, ema_21):
@@ -192,19 +204,90 @@ class TechnicalAnalyzer:
         return "NEUTRAL"
 
     @staticmethod
+    def _interpret_macd(
+        macd_value,
+        signal_value,
+    ):
+        """
+        Interpreta el estado del MACD según su relación con
+        la línea de señal y la línea cero.
+
+        Parámetros:
+            macd_value (float):
+                Último valor de la línea MACD.
+
+            signal_value (float):
+                Último valor de la línea de señal.
+
+        Retorna:
+            str:
+                Estado técnico del MACD.
+        """
+        if macd_value > signal_value and macd_value > 0:
+            return "ALCISTA_CONFIRMADO"
+
+        if macd_value > signal_value and macd_value <= 0:
+            return "RECUPERACION_ALCISTA"
+
+        if macd_value < signal_value and macd_value >= 0:
+            return "DEBILITAMIENTO_ALCISTA"
+
+        if macd_value < signal_value and macd_value < 0:
+            return "BAJISTA_CONFIRMADO"
+
+        return "NEUTRAL"
+
+    @staticmethod
+    def _determine_recommendation(score):
+        """
+        Determina una recomendación técnica según el score.
+
+        La recomendación permite clasificar rápidamente
+        los activos analizados por el Radar.
+
+        No representa una orden automática de compra
+        o venta.
+
+        Parámetros:
+            score (int):
+                Puntuación técnica entre cero y cien.
+
+        Retorna:
+            str:
+                Clasificación técnica del activo.
+        """
+        if score >= 85:
+            return "CANDIDATO_FUERTE"
+
+        if score >= 70:
+            return "VIGILAR"
+
+        if score >= 50:
+            return "ESPERAR"
+
+        if score >= 30:
+            return "DEBIL"
+
+        return "DESCARTAR"
+
+    @staticmethod
     def _calculate_score(
         current_price,
         ema_9,
         ema_21,
         rsi_14,
+        macd_value,
+        signal_value,
     ):
         """
-        Calcula una puntuación técnica inicial de cero a cien.
+        Calcula una puntuación técnica entre cero y cien.
 
-        La puntuación considera:
-        - Posición relativa de EMA 9 y EMA 21.
-        - Posición del precio respecto de las EMA.
-        - Zona del RSI.
+        La puntuación considera cuatro grupos de evidencia:
+
+        - Tendencia según EMA 9 y EMA 21.
+        - Posición del precio respecto de ambas EMA.
+        - Momentum según RSI.
+        - Estado combinado del MACD.
 
         Parámetros:
             current_price (float):
@@ -219,34 +302,52 @@ class TechnicalAnalyzer:
             rsi_14 (float):
                 RSI de 14 períodos.
 
+            macd_value (float):
+                Último valor de la línea MACD.
+
+            signal_value (float):
+                Último valor de la línea de señal.
+
         Retorna:
             int:
                 Puntuación entre 0 y 100.
         """
         score = 50
 
+        # Tendencia según EMA: máximo 12 puntos.
         if ema_9 > ema_21:
-            score += 15
+            score += 12
         elif ema_9 < ema_21:
-            score -= 15
+            score -= 12
 
-        if current_price > ema_9:
-            score += 10
-        elif current_price < ema_9:
-            score -= 10
+        # Posición del precio: máximo 8 puntos.
+        if current_price > ema_9 and current_price > ema_21:
+            score += 8
+        elif current_price < ema_9 and current_price < ema_21:
+            score -= 8
 
-        if current_price > ema_21:
-            score += 10
-        elif current_price < ema_21:
-            score -= 10
-
-        if 50 <= rsi_14 < 70:
-            score += 15
-        elif 30 < rsi_14 < 50:
-            score -= 5
+        # Momentum RSI: máximo 8 puntos.
+        if 55 <= rsi_14 < 70:
+            score += 8
+        elif 50 <= rsi_14 < 55:
+            score += 4
+        elif 45 <= rsi_14 < 50:
+            score -= 4
+        elif 30 < rsi_14 < 45:
+            score -= 8
         elif rsi_14 >= 70:
-            score -= 10
+            score -= 8
         elif rsi_14 <= 30:
-            score += 5
+            score += 4
+
+        # Momentum MACD: máximo 12 puntos.
+        if macd_value > signal_value and macd_value > 0:
+            score += 12
+        elif macd_value > signal_value and macd_value <= 0:
+            score += 6
+        elif macd_value < signal_value and macd_value >= 0:
+            score -= 6
+        elif macd_value < signal_value and macd_value < 0:
+            score -= 12
 
         return max(0, min(100, score))
