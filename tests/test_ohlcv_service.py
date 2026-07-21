@@ -22,8 +22,11 @@ RESPONSABILIDADES
 """
 
 from datetime import datetime
-
-from indicators.ohlcv_service import OHLCVService
+from services.ohlcv_service import OHLCVService
+from config.settings import (
+    DEFAULT_TIMEFRAME,
+    DEFAULT_CANDLE_LIMIT,
+)
 
 
 def main():
@@ -34,8 +37,8 @@ def main():
 
     candles = service.get_candles(
         symbol="BTC/USDT",
-        timeframe="5m",
-        limit=10,
+        timeframe=DEFAULT_TIMEFRAME,
+        limit=DEFAULT_CANDLE_LIMIT,
     )
 
     print("=" * 70)

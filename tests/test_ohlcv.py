@@ -22,12 +22,16 @@ Cada vela contiene:
 """
 from datetime import datetime
 from exchange.binance_client import BinanceClient
+from config.settings import (
+    DEFAULT_TIMEFRAME,
+    DEFAULT_CANDLE_LIMIT,
+)
 
 def main() -> None:
     client = BinanceClient()
     symbol = 'BTC/USDT'
-    timeframe = '5m'
-    limit = 10
+    timeframe = DEFAULT_TIMEFRAME
+    limit = DEFAULT_CANDLE_LIMIT
     candles = client.get_ohlcv(symbol=symbol, timeframe=timeframe, limit=limit)
     ##
     # O = Open

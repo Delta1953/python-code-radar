@@ -30,9 +30,11 @@ DEPENDENCIAS
 
 from config.settings import DEFAULT_CANDLE_LIMIT, DEFAULT_TIMEFRAME
 from indicators.ema import EMAIndicator
-from indicators.ohlcv_service import OHLCVService
+from services.ohlcv_service import OHLCVService
 from indicators.rsi import RSIIndicator
 from indicators.macd import MACDIndicator
+from indicators.adx import ADXIndicator
+from indicators.atr import ATRIndicator
 
 
 class TechnicalAnalyzer:
@@ -114,6 +116,13 @@ class TechnicalAnalyzer:
             closing_prices,
         )
 
+        adx = ADXIndicator.get_last(
+            candles,
+            period=14,
+        )
+
+        adx_status = self._interpret_adx(adx)        
+
         macd_status = self._interpret_macd(
             macd_value=macd["macd"],
             signal_value=macd["signal"],
@@ -128,6 +137,11 @@ class TechnicalAnalyzer:
             rsi_14,
         )
 
+        atr = ATRIndicator.get_last(
+            candles,
+            period=14,
+        )    
+
         score = self._calculate_score(
             current_price=current_price,
             ema_9=ema_9,
@@ -135,6 +149,7 @@ class TechnicalAnalyzer:
             rsi_14=rsi_14,
             macd_value=macd["macd"],
             signal_value=macd["signal"],
+            adx=adx,
         )
 
         recommendation = self._determine_recommendation(score)
@@ -151,10 +166,13 @@ class TechnicalAnalyzer:
             "signal": macd["signal"],
             "histogram": macd["histogram"],
             "macd_status": macd_status,
+            "adx": adx,
+            "adx_status": adx_status,
             "trend": trend,
             "rsi_status": rsi_status,
             "score": score,
             "recommendation": recommendation,
+            "atr": atr,
         }
                 
 
@@ -238,6 +256,30 @@ class TechnicalAnalyzer:
         return "NEUTRAL"
 
     @staticmethod
+    def _interpret_adx(adx):
+        """
+        Interpreta la fuerza de la tendencia según el ADX.
+
+        Parámetros:
+            adx (float):
+                Último valor del indicador ADX.
+
+        Retorna:
+            str:
+                Estado de fuerza de la tendencia.
+        """
+        if adx < 20:
+            return "SIN_TENDENCIA"
+
+        if adx < 25:
+            return "TENDENCIA_NACIENTE"
+
+        if adx < 40:
+            return "TENDENCIA_FUERTE"
+
+        return "TENDENCIA_MUY_FUERTE"
+
+    @staticmethod
     def _determine_recommendation(score):
         """
         Determina una recomendación técnica según el score.
@@ -256,8 +298,8 @@ class TechnicalAnalyzer:
             str:
                 Clasificación técnica del activo.
         """
-        if score >= 85:
-            return "CANDIDATO_FUERTE"
+        if score >= 90:
+            return "CANDIDATO"
 
         if score >= 70:
             return "VIGILAR"
@@ -278,6 +320,7 @@ class TechnicalAnalyzer:
         rsi_14,
         macd_value,
         signal_value,
+        adx,
     ):
         """
         Calcula una puntuación técnica entre cero y cien.
@@ -308,16 +351,41 @@ class TechnicalAnalyzer:
             signal_value (float):
                 Último valor de la línea de señal.
 
+            adx (float):
+                Fuerza de la tendencia medida por ADX.
+
         Retorna:
             int:
                 Puntuación entre 0 y 100.
+
+        NOTA Importante:     
+        El Score debe responder una única pregunta:
+            No:
+                "¿Va a subir?" Porque eso nadie lo puede saber.
+            Tampoco: "¿Conviene comprar?"
+                Porque eso depende del riesgo, del capital y de la estrategia.
+            Sino: "¿Qué tan alineadas están las condiciones técnicas para una operación alcista?"
+                Eso es algo objetivo y medible
+
+        FILOSOFIA DEL SCORE
+            | Score      | Significado                                                    |
+            | ---------- | -------------------------------------------------------------- |
+            | **90-100** | Condiciones técnicas casi ideales. Muy pocas veces aparecerán. |
+            | **75-89**  | Muy buena configuración. Vale la pena vigilar.                 |
+            | **60-74**  | Configuración aceptable. Esperar confirmación.                 |
+            | **40-59**  | Señales mixtas o contradictorias.                              |
+            | **0-39**   | Configuración desfavorable para compras.                       |
+        
         """
         score = 50
 
+        bullish_trend = ema_9 > ema_21
+        bearish_trend = ema_9 < ema_21
+
         # Tendencia según EMA: máximo 12 puntos.
-        if ema_9 > ema_21:
+        if bullish_trend:
             score += 12
-        elif ema_9 < ema_21:
+        elif bearish_trend:
             score -= 12
 
         # Posición del precio: máximo 8 puntos.
@@ -326,7 +394,7 @@ class TechnicalAnalyzer:
         elif current_price < ema_9 and current_price < ema_21:
             score -= 8
 
-        # Momentum RSI: máximo 8 puntos.
+        # Momentum RSI: entre -8 y +8 puntos.
         if 55 <= rsi_14 < 70:
             score += 8
         elif 50 <= rsi_14 < 55:
@@ -338,7 +406,7 @@ class TechnicalAnalyzer:
         elif rsi_14 >= 70:
             score -= 8
         elif rsi_14 <= 30:
-            score += 4
+            pass
 
         # Momentum MACD: máximo 12 puntos.
         if macd_value > signal_value and macd_value > 0:
@@ -349,5 +417,21 @@ class TechnicalAnalyzer:
             score -= 6
         elif macd_value < signal_value and macd_value < 0:
             score -= 12
+
+        # ADX confirma la dirección de la tendencia.
+        if adx < 20:
+            score -= 10
+        elif adx < 25:
+            pass
+        elif adx < 40:
+            if bullish_trend:
+                score += 6
+            elif bearish_trend:
+                score -= 6
+        else:
+            if bullish_trend:
+                score += 10
+            elif bearish_trend:
+                score -= 10
 
         return max(0, min(100, score))

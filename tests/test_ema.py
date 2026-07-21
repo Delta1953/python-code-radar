@@ -22,7 +22,11 @@ RESPONSABILIDADES
 """
 
 from indicators.ema import EMAIndicator
-from indicators.ohlcv_service import OHLCVService
+from services.ohlcv_service import OHLCVService
+from config.settings import (
+    DEFAULT_TIMEFRAME,
+    DEFAULT_CANDLE_LIMIT,
+)
 
 
 def main():
@@ -33,8 +37,8 @@ def main():
 
     candles = service.get_candles(
         symbol="BTC/USDT",
-        timeframe="5m",
-        limit=100,
+        timeframe=DEFAULT_TIMEFRAME,
+        limit=DEFAULT_CANDLE_LIMIT,
     )
 
     closing_prices = [candle[4] for candle in candles]  # Guarda el precio de cierre de cada vela en una lista
