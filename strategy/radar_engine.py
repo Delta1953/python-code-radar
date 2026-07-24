@@ -2,73 +2,66 @@
 Proyecto: Python Code de Radar
 Archivo: radar_engine.py
 Autor: Roberto Günther
-Versión: 0.1.0
+Versión: 0.3.0
 
 Objetivo:
-    Coordinar el proceso completo de generación del Radar de mercados.
-
-Responsabilidades:
-    - Obtener los mercados seleccionados por MarketScanner.
-    - Analizar cada mercado mediante TechnicalAnalyzer.
-    - Reunir los resultados de los análisis.
-    - Ordenar los resultados por score de mayor a menor.
-    - Devolver la lista completa ordenada.
-
-Dependencias:
-    - MarketScanner
-    - TechnicalAnalyzer
+    Coordinar el scanner, el analizador técnico
+    y el gestor de riesgo.
 """
+
 from config.settings import (
+    DEFAULT_ATR_MULTIPLIER,
     DEFAULT_CANDLE_LIMIT,
+    DEFAULT_CAPITAL,
     DEFAULT_MARKET_LIMIT,
+    DEFAULT_RISK_PERCENT,
+    DEFAULT_RISK_REWARD,
     DEFAULT_TIMEFRAME,
 )
+from risk.risk_manager import RiskManager
+
 
 class RadarEngine:
     """
-    Coordina la selección de mercados y su análisis técnico.
-
-    No calcula indicadores ni se conecta directamente con Binance.
-    Su responsabilidad es coordinar el scanner y el analizador.
+    Coordina la selección de mercados, el análisis técnico
+    y la generación del plan de riesgo.
     """
 
-    def __init__(self, scanner, analyzer):
+    def __init__(
+        self,
+        scanner,
+        analyzer,
+        risk_manager=RiskManager,
+    ) -> None:
         """
-        Inicializa el motor del Radar.
-
-        Parámetros:
-            scanner:
-                Componente encargado de seleccionar los mercados.
-
-            analyzer:
-                Componente encargado de analizar cada mercado.
-
-        Retorna:
-            None
+        Inicializa RadarEngine con sus dependencias.
         """
+
         self.scanner = scanner
         self.analyzer = analyzer
+        self.risk_manager = risk_manager
 
-    def run(self, limit=DEFAULT_MARKET_LIMIT, timeframe=DEFAULT_TIMEFRAME, candle_limit=DEFAULT_CANDLE_LIMIT):
+    def run(
+        self,
+        limit=DEFAULT_MARKET_LIMIT,
+        timeframe=DEFAULT_TIMEFRAME,
+        candle_limit=DEFAULT_CANDLE_LIMIT,
+        capital=DEFAULT_CAPITAL,
+        risk_percent=DEFAULT_RISK_PERCENT,
+        risk_reward=DEFAULT_RISK_REWARD,
+        atr_multiplier=DEFAULT_ATR_MULTIPLIER,
+    ) -> list:
         """
-        Ejecuta el proceso completo de generación del Radar.
-
-        Parámetros:
-            limit (int):
-                Cantidad de mercados que debe seleccionar el scanner.
-
-            timeframe (str):
-                Temporalidad de las velas utilizadas para el análisis.
-
-            candle_limit (int):
-                Cantidad de velas solicitadas para cada mercado.
+        Ejecuta el proceso completo del Radar.
 
         Retorna:
-            list[dict]:
-                Lista completa de resultados ordenados por score
-                de mayor a menor.
+            Lista de resultados ordenados por score
+            de mayor a menor.
         """
-        markets = self.scanner.get_top_volume(limit=limit)
+
+        markets = self.scanner.get_top_volume(
+            limit=limit,
+        )
 
         results = []
 
@@ -80,6 +73,17 @@ class RadarEngine:
                 timeframe=timeframe,
                 limit=candle_limit,
             )
+
+            risk_plan = self.risk_manager.calculate(
+                current_price=result["current_price"],
+                atr=result["atr"],
+                capital=capital,
+                risk_percent=risk_percent,
+                risk_reward=risk_reward,
+                atr_multiplier=atr_multiplier,
+            )
+
+            result["risk_plan"] = risk_plan
 
             results.append(result)
 
